@@ -1,0 +1,323 @@
+openapi: 3.0.3
+info:
+  title: Loyalty AI Ops MCP API
+  description: OpenAPI specification for the Loyalty AI Operations MCP API.
+  version: '1.0.0'
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  time:
+                    type: string
+  /mcp/get_transaction_summary:
+    get:
+      summary: Get transaction summary
+      operationId: getTransactionSummary
+      parameters:
+        - name: transaction_type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionSummary'
+  /mcp/search_logs:
+    get:
+      summary: Search logs
+      operationId: searchLogs
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchLogsResponse'
+  /mcp/get_service_dependency:
+    get:
+      summary: Get service dependencies from Neo4j
+      operationId: getServiceDependency
+      parameters:
+        - name: service_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: depth
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 2
+      responses:
+        '200':
+          description: Dependency list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                  dependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dependency'
+  /mcp/detect_anomaly:
+    get:
+      summary: Detect anomaly for transaction failure rate
+      operationId: detectAnomaly
+      parameters:
+        - name: transaction_type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Anomaly result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnomalyResult'
+  /mcp/correlate_events:
+    get:
+      summary: Correlate events by keys
+      operationId: correlateEvents
+      parameters:
+        - name: keys
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            default: [trace_id, request_id, transaction_id]
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Correlation groups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrelationResponse'
+  /mcp/analyze_root_cause:
+    get:
+      summary: Analyze root cause (heuristic)
+      operationId: analyzeRootCause
+      parameters:
+        - name: transaction_type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: RCA result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RCAResult'
+  /mcp/calculate_customer_impact:
+    get:
+      summary: Calculate customer impact
+      operationId: calculateCustomerImpact
+      parameters:
+        - name: start_time
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: end_time
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Impact result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactResult'
+components:
+  schemas:
+    TransactionSummary:
+      type: object
+      properties:
+        transaction_type:
+          type: string
+        total:
+          type: integer
+        success:
+          type: integer
+        failed:
+          type: integer
+        success_rate:
+          type: number
+          format: float
+        failure_rate:
+          type: number
+          format: float
+        avg_duration_ms:
+          type: integer
+          nullable: true
+        p95_duration_ms:
+          type: integer
+          nullable: true
+    LogHit:
+      type: object
+      properties:
+        @timestamp:
+          type: string
+        service:
+          type: object
+          properties:
+            name:
+              type: string
+        log:
+          type: object
+          properties:
+            level:
+              type: string
+        message:
+          type: string
+    SearchLogsResponse:
+      type: object
+      properties:
+        took_ms:
+          type: integer
+        hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogHit'
+    Dependency:
+      type: object
+      properties:
+        name:
+          type: string
+    AnomalyResult:
+      type: object
+      properties:
+        transaction_type:
+          type: string
+        current_failure_rate:
+          type: number
+        baseline_failure_rate:
+          type: number
+        deviation:
+          type: number
+          nullable: true
+        severity:
+          type: string
+        confidence:
+          type: number
+          format: float
+    CorrelationResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        groups:
+          type: object
+    RCAResult:
+      type: object
+      properties:
+        incident_id:
+          type: string
+        transaction_type:
+          type: string
+        root_cause:
+          type: string
+        confidence:
+          type: number
+          format: float
+        evidence:
+          type: array
+          items:
+            type: string
+    ImpactResult:
+      type: object
+      properties:
+        transactions:
+          type: integer
+        customers:
+          type: integer
+        points:
+          type: integer
