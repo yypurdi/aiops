@@ -1,0 +1,9 @@
+app:
+  name: loyalty-ai-ops
+  env: development
+elasticsearch:
+  url: ${ELASTIC_URL:http://localhost:9200}
+postgres:
+  url: ${POSTGRES_URL:postgresql://aiops:aiops_pass@localhost:5432/aiops}
+neo4j:
+  url: ${NEO4J_URL:bolt://localhost:7687}
